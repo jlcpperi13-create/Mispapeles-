@@ -1,13 +1,26 @@
-// Service worker de MisPapeles. Al subir cambios, sube el número: v1 -> v2...
-const CACHE = 'mispapeles-v3';
-const ARCHIVOS = ['./', './index.html', './manifest.json', './papeles-192.png', './papeles-512.png'];
-self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting())); });
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== CACHE).map(x => caches.delete(x)))).then(() => self.clients.claim()));
+// Service worker de MisReservas
+// Cada vez que subas cambios, sube también este número (v1 -> v2 -> v3...)
+const CACHE = 'misreservas-v10';
+const ARCHIVOS = ['./', './index.html', './admin.html', './firebase-config.js',
+  './manifest.json', './manifest-panel.json', './colaborador.html', './manifest-colab.json', './colab-192.png', './colab-512.png',
+  './cliente-192.png', './cliente-512.png', './panel-192.png', './panel-512.png'];
+
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
 });
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys()
+    .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+    .then(() => self.clients.claim()));
+});
+// Primero la red (siempre la versión nueva); si no hay conexión, la copia guardada.
+// Solo archivos propios: Firebase va siempre directo a internet.
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if(e.request.method !== 'GET' || url.origin !== self.location.origin) return;
-  e.respondWith(fetch(e.request).then(r => { const c = r.clone(); caches.open(CACHE).then(x => x.put(e.request, c)); return r; })
-    .catch(() => caches.match(e.request, { ignoreSearch: true })));
+  if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  e.respondWith(
+    fetch(e.request)
+      .then(r => { const copia = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copia)); return r; })
+      .catch(() => caches.match(e.request, { ignoreSearch: true }))
+  );
 });
